@@ -1,10 +1,10 @@
 {
-    "name": "restful-server",
+    "name": "cisc-375_project-3",
     "version": "0.0.0",
-    "description": "RESTful API Server using Node JS",
+    "description": "Project 3: RESTful API",
     "author": {
-        "name": "",
-        "email": ""
+        "name": "Michael Twohy",
+        "email": "twoh7612@stthomas.edu"
     },
     "contributors": [
         {
@@ -19,7 +19,7 @@
     "main": "server.js",
     "repository": {
         "type": "git",
-        "url": ""
+        "url": "https://github.com/mktwohy/Project-3-RESTfulAPI"
     },
     "dependencies": {
         "express": "^4.18.2",
