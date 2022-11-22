@@ -137,7 +137,7 @@ function databaseRun(query, params) {
 }
 
 /**
- * Create Promise for SQLite3 database `SELECT` query after inserting a `WHERE` clause
+ * Create Promise for SQLite3 database `SELECT` query after inserting a `WHERE` and `LIMIT` clause, if necessary
  * 
  * @param {string} query a SQL query that does not contain a `WHERE` clause
  * @param {{ expression: string, params: any[], repeatWithOr: boolean, repeatWithAnd: boolean }[]} conditions 
@@ -150,10 +150,10 @@ function databaseRun(query, params) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (limit !== null && limit !== undefined && !isNaN(limit)) {
+    if (isNumber(limit)) {
         editedQuery += ` LIMIT ${limit}`
     }
-    if (params.length !== 0) {
+    if (!isEmpty(params)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseSelect(editedQuery, params)
@@ -173,7 +173,7 @@ function databaseRunWhere(query, conditions) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (params.length !== 0) {
+    if (isEmpty(editedQuery)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseRun(editedQuery, params)
@@ -220,7 +220,7 @@ function filterAndFormatExpressions(conditions) {
 }
 
 function isConditionValid(condition) {
-    if (condition.expression.includes('?') && (condition.params === undefined || condition.params.length === 0)) {
+    if (condition.expression.includes('?') && !isEmpty(condition.params)) {
         return false
     }
     return condition.params.every((p) => 
@@ -229,18 +229,24 @@ function isConditionValid(condition) {
 }
 
 // extension method for String
-String.prototype.repeatWithDelimeter = 
-    function(count, delimeter) {
-        return arrayOf(count, (i) => this).join(delimeter)
-    } 
+String.prototype.repeatWithDelimeter = (count, delimeter) => 
+    arrayOf(count, (i) => this).join(delimeter)
 
 function arrayOf(size, indexTransform) {
     return Array.from(Array(size)).map((value, index) => indexTransform(index))
 }
 
 function parseInts(param, delimeter=',') {
-    if (param === undefined) return []
+    if (isEmpty(param)) return []
     return param.split(delimeter).map((c) => parseInt(c))
+}
+
+function isEmpty(list) {
+    return list !== undefined && list != null && list.length !== 0
+}
+
+function isNumber(number) {
+    return number instanceof Number && !isNaN(number)
 }
 
 // Start server - listen for client connections
