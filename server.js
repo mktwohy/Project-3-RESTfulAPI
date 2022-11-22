@@ -44,7 +44,6 @@ app.get('/neighborhoods', (req, res) => {
 
 // GET request handler for crime incidents
 app.get('/incidents', (req, res) => {
-    console.log(req.query);
     let query = `SELECT * FROM Incidents`
     let limit = parseInt(req.query.limit)
     let conditions = [
