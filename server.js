@@ -45,15 +45,35 @@ app.get('/neighborhoods', (req, res) => {
 // GET request handler for crime incidents
 app.get('/incidents', (req, res) => {
     console.log(req.query);
-    let query = `SELECT code FROM Incidents LIMIT 50`
-    let neighborhood = parseInt(req.query.neighborhood)
-    let codes = req.query.code.split(',').map((c) => parseInt(c))
-    let whereConditions = [
-        ["neighborhood_number = ?", neighborhood],
-        [repeatWithOr('code = ?', codes.length), ...codes],
+    let query = `SELECT * FROM Incidents`
+    let limit = parseInt(req.query.limit)
+    let conditions = [
+        { 
+            expression: "DATE(date_time) >= ?", 
+            params: [req.query.start_date] 
+        },
+        { 
+            expression: "DATE(date_time) <= ?", 
+            params: [req.query.end_date] 
+        },
+        { 
+            expression: "neighborhood_number = ?",  
+            repeatWithOr: true, 
+            params: parseInts(req.query.neighborhood) 
+        },
+        { 
+            expression: 'code = ?', 
+            repeatWithOr: true, 
+            params: parseInts(req.query.code) 
+        },
+        { 
+            expression: 'police_grid = ?', 
+            repeatWithOr: true, 
+            params: parseInts(req.query.grid) 
+        }
     ]
 
-    databaseSelectWhere(query, whereConditions)
+    databaseSelectWhere(query, conditions, limit)
     .then((incidents) => {
         res.status(200).type('json').send(incidents)
     })
@@ -76,38 +96,14 @@ app.delete('/remove-incident', (req, res) => {
     res.status(200).type('txt').send('OK'); // <-- you may need to change this
 });
 
-/**
- * Create Promise for SQLite3 database `SELECT` query after inserting a `WHERE` clause
- * @param {string} query a SQL query that does not contain a `WHERE` clause
- * @param {any[][]} conditionsAndParams a list where the first element is a query string with a placeholder (`?`), and the following elements are the respective params
- * @returns 
- */
-function databaseSelectWhere(query, conditionsAndParams) {
-    let [conditions, params] = filterValidConditionsAndParams(conditionsAndParams)
-
-    if (conditions.length === 0 || params.length === 0) {
-        return databaseSelect(query, [])
-    }
-    return databaseSelect(insertWhereClause(query, conditions), params)
-}
-
-/**
- * Create Promise for SQLite3 database `INSERT` or `DELETE` query after inserting a `WHERE` clause
- * @param {string} query a SQL query that does not contain a `WHERE` clause
- * @param {any[][]} conditionsAndParams a list where the first element is a query string with a placeholder (`?`), and the following elements are the respective params
- * @returns 
- */
-function databaseRunWhere(query, conditionsAndParams) {
-    let [conditions, params] = filterValidConditionsAndParams(conditionsAndParams)
-
-    if (conditions.length === 0 || params.length === 0) {
-        return databaseRun(query, [])
-    }
-    return databaseRun(insertWhereClause(query, conditions), params)
-}
-
 // Create Promise for SQLite3 database SELECT query 
 function databaseSelect(query, params) {
+    console.log(
+        `SELECT:
+            query: ${query}
+            params: ${params}
+        `
+    )
     return new Promise((resolve, reject) => {
         db.all(query, params, (err, rows) => {
             if (err) {
@@ -122,6 +118,12 @@ function databaseSelect(query, params) {
 
 // Create Promise for SQLite3 database INSERT or DELETE query
 function databaseRun(query, params) {
+    console.log(
+        `RUN:
+            query: ${query}
+            params: ${params}
+        `
+    )
     return new Promise((resolve, reject) => {
         db.run(query, params, (err) => {
             if (err) {
@@ -134,14 +136,56 @@ function databaseRun(query, params) {
     })
 }
 
+/**
+ * Create Promise for SQLite3 database `SELECT` query after inserting a `WHERE` clause
+ * 
+ * @param {string} query a SQL query that does not contain a `WHERE` clause
+ * @param {{ expression: string, params: any[], repeatWithOr: boolean, repeatWithAnd: boolean }[]} conditions 
+ * @returns 
+ */
+ function databaseSelectWhere(query, conditions, limit=null) {
+    if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
+
+    let expressions = filterAndFormatExpressions(conditions)
+    let params = filterParameters(conditions)
+    let editedQuery = query
+
+    if (limit !== null && limit !== undefined && !isNaN(limit)) {
+        editedQuery += ` LIMIT ${limit}`
+    }
+    if (params.length !== 0) {
+        editedQuery = insertWhereClause(editedQuery, expressions)
+    }
+    return databaseSelect(editedQuery, params)
+}
 
 /**
- * Inserts a `WHERE` clause into query after the `FROM` clause, where each condition is separated by an `AND`
+ * Create Promise for SQLite3 database `INSERT` or `DELETE` query after inserting a `WHERE` clause
+ * 
+ * @param {string} query a SQL query that does not contain a `WHERE` clause
+ * @param {{ expression: string, params: any[], repeatWithOr: boolean, repeatWithAnd: boolean }[]} conditions 
+ * @returns 
+ */
+function databaseRunWhere(query, conditions) {
+    if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
+
+    let expressions = filterAndFormatExpressions(conditions)
+    let params = filterParameters(conditions)
+    let editedQuery = query
+
+    if (params.length !== 0) {
+        editedQuery = insertWhereClause(editedQuery, expressions)
+    }
+    return databaseRun(editedQuery, params)
+}
+
+/**
+ * Inserts a `WHERE` clause into query after the `FROM` clause and separates each condition with an `AND`
  * @param {string} query 
  * @param {string[]} conditions 
  * @returns string
  */
-function insertWhereClause(query, conditions) {
+ function insertWhereClause(query, conditions) {
     let words = query.split(' ')
     let whereClause = `WHERE ${conditions.join(' AND ')}`
     let whereIndex = words.indexOf('FROM') + 2
@@ -149,41 +193,39 @@ function insertWhereClause(query, conditions) {
     return words.join(' ')
 }
 
-/**
- * filters conditions and associated params where the param is valid (not `undefined`, `NaN`, or `null`)
- * 
- * @param {any[][]} conditionsAndParams input from databaseRun() or databaseSelect()
- * @returns a list containing two lists - one for conditions, and the other for params
- */
-function filterValidConditionsAndParams(conditionsAndParams) {
-    let whereConditions = []
-    let queryParams = []
-
-    // append where clause conditions if the URL query param exists
-    for (let condParams of conditionsAndParams) {
-        let condition = condParams[0]
-        let params = condParams.slice(1)
-        let allParamsAreValid = params.every((p) => 
-            p !== undefined && !isNaN(p) && p !== null
-        )
-        
-        if (allParamsAreValid) {
-            whereConditions.push(condition)
-            queryParams = queryParams.concat(params)
-        } else {
-            console.error(`could not add ${condition} because ${params} contains invalid parameters`);
-        }
+function filterParameters(conditions) {
+    let parameters = []
+    for (let c of conditions.filter(isConditionValid)) {
+        parameters = parameters.concat(c.params)
     }
+    return parameters
+}
+
+function filterAndFormatExpressions(conditions) {
+    let expressions = []
+    for (let c of conditions.filter(isConditionValid)) {
+        let expression = c.expression
     
-    return [whereConditions, queryParams]
+        if (c.repeatWithAnd) {
+            expression = c.expression.repeatWithDelimeter(c.params.length, ' AND ')
+            expression = `(${expression})`
+        }
+        if (c.repeatWithOr) {
+            expression = c.expression.repeatWithDelimeter(c.params.length, ' OR ')
+            expression = `(${expression})`
+        }
+        expressions.push(expression)
+    }
+    return expressions
 }
 
-function repeatWithOr(condition, count) {
-    return condition.repeatWithDelimeter(count, ' OR ')
-}
-
-function repeatWithAnd(condition, count) {
-    return condition.repeatWithDelimeter(count, ' OR ')
+function isConditionValid(condition) {
+    if (condition.expression.includes('?') && (condition.params === undefined || condition.params.length === 0)) {
+        return false
+    }
+    return condition.params.every((p) => 
+        p !== undefined && p !== null
+    )
 }
 
 // extension method for String
@@ -194,6 +236,11 @@ String.prototype.repeatWithDelimeter =
 
 function arrayOf(size, indexTransform) {
     return Array.from(Array(size)).map((value, index) => indexTransform(index))
+}
+
+function parseInts(param, delimeter=',') {
+    if (param === undefined) return []
+    return param.split(delimeter).map((c) => parseInt(c))
 }
 
 // Start server - listen for client connections
