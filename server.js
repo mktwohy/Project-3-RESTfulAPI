@@ -37,9 +37,22 @@ app.get('/codes', (req, res) => {
 
 // GET request handler for neighborhoods
 app.get('/neighborhoods', (req, res) => {
-    console.log(req.query); // query object (key-value pairs after the ? in the url)
+    let query = `SELECT * FROM Neighborhoods ORDER BY neighborhood_number`
+    let conditions = [
+        {
+            expression: "neighborhood_number >= ?",
+            repeatWithDelimeter: true,
+            params: parseInts(req.query.neighborhood_number)
+        }
+    ] 
     
-    res.status(200).type('json').send({}); // <-- you will need to change this
+    databaseSelectWhere(query, conditions)
+    .then((neighborhoods) => {
+        res.status(200).type('json').send(neighborhoods)
+    })
+    .catch((err) => {
+        res.status(404).type('text/plain').send(err)
+    });
 });
 
 // GET request handler for crime incidents
