@@ -172,7 +172,7 @@ function databaseRunWhere(query, conditions) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (isEmpty(editedQuery)) {
+    if (!isEmpty(editedQuery)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseRun(editedQuery, params)
