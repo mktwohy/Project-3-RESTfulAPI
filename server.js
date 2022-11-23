@@ -149,8 +149,8 @@ function databaseRun(query, params) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (isNumber(limit)) {
-        editedQuery += ` LIMIT ${limit}`
+    if (!isNaN(limit)) {
+        editedQuery = insertLimitClause(editedQuery, limit)
     }
     if (!isEmpty(params)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
@@ -176,6 +176,10 @@ function databaseRunWhere(query, conditions) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseRun(editedQuery, params)
+}
+
+function insertLimitClause(query, limit) {
+    return `${query} LIMIT ${limit}`
 }
 
 /**
@@ -242,10 +246,6 @@ function parseInts(param, delimeter=',') {
 
 function isEmpty(list) {
     return list === undefined || list === null || list.length === 0
-}
-
-function isNumber(number) {
-    return number instanceof Number && !isNaN(number)
 }
 
 // Start server - listen for client connections
