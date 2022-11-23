@@ -241,7 +241,7 @@ function parseInts(param, delimeter=',') {
 }
 
 function isEmpty(list) {
-    return list !== undefined && list != null && list.length !== 0
+    return list === undefined || list === null || list.length === 0
 }
 
 function isNumber(number) {
