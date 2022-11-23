@@ -41,7 +41,7 @@ app.get('/neighborhoods', (req, res) => {
     let conditions = [
         {
             expression: "neighborhood_number >= ?",
-            repeatWithDelimeter: true,
+            repeatWithOr: true,
             params: parseInts(req.query.neighborhood_number)
         }
     ] 
@@ -162,7 +162,7 @@ function databaseRun(query, params) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (!isNaN(limit)) {
+    if (!isNaN(limit) && limit !== null) {
         editedQuery = insertLimitClause(editedQuery, limit)
     }
     if (!isEmpty(params)) {
