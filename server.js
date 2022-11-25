@@ -156,8 +156,8 @@ function databaseRun(query, params) {
  * @returns 
  */
  function databaseSelectWhere(query, conditions, limit=null) {
-    if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
-    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually")
+    if (query.includes('WHERE')) Error("WHERE clause should not be added manually in databaseSelectWhere()")
+    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually in databaseSelectWhere()")
 
     let expressions = filterAndFormatExpressions(conditions)
     let params = filterParameters(conditions)
@@ -181,7 +181,8 @@ function databaseRun(query, params) {
  * @returns 
  */
 function databaseRunWhere(query, conditions) {
-    if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
+    if (query.includes('WHERE')) Error("WHERE clause should not be added manually in databaseSelectWhere()")
+    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually in databaseSelectWhere()")
 
     let expressions = filterAndFormatExpressions(conditions)
     let params = filterParameters(conditions)
