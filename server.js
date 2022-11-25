@@ -40,9 +40,9 @@ app.get('/neighborhoods', (req, res) => {
     let query = `SELECT * FROM Neighborhoods ORDER BY neighborhood_number`
     let conditions = [
         {
-            expression: "neighborhood_number >= ?",
+            expression: "neighborhood_number = ?",
             repeatWithOr: true,
-            params: parseInts(req.query.neighborhood_number)
+            params: parseInts(req.query.id)
         }
     ] 
     
@@ -157,10 +157,12 @@ function databaseRun(query, params) {
  */
  function databaseSelectWhere(query, conditions, limit=null) {
     if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
+    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually")
 
     let expressions = filterAndFormatExpressions(conditions)
     let params = filterParameters(conditions)
     let editedQuery = query
+
 
     if (!isNaN(limit) && limit !== null) {
         editedQuery = insertLimitClause(editedQuery, limit)
@@ -198,12 +200,12 @@ function insertLimitClause(query, limit) {
 /**
  * Inserts a `WHERE` clause into query after the `FROM` clause and separates each condition with an `AND`
  * @param {string} query 
- * @param {string[]} conditions 
+ * @param {string[]} expressions 
  * @returns string
  */
- function insertWhereClause(query, conditions) {
+ function insertWhereClause(query, expressions) {
     let words = query.split(' ')
-    let whereClause = `WHERE ${conditions.join(' AND ')}`
+    let whereClause = `WHERE ${expressions.join(' AND ')}`
     let whereIndex = words.indexOf('FROM') + 2
     words.splice(whereIndex, 0, whereClause) // confusingly, this is how you insert items in JS
     return words.join(' ')
@@ -223,12 +225,10 @@ function filterAndFormatExpressions(conditions) {
         let expression = c.expression
     
         if (c.repeatWithAnd) {
-            expression = c.expression.repeatWithDelimeter(c.params.length, ' AND ')
-            expression = `(${expression})`
+            expression = `(${expression.repeatWithDelimeter(c.params.length, ' AND ')})`
         }
         if (c.repeatWithOr) {
-            expression = c.expression.repeatWithDelimeter(c.params.length, ' OR ')
-            expression = `(${expression})`
+            expression = `(${expression.repeatWithDelimeter(c.params.length, ' OR ')})`
         }
         expressions.push(expression)
     }
@@ -236,18 +236,22 @@ function filterAndFormatExpressions(conditions) {
 }
 
 function isConditionValid(condition) {
-    if (condition.expression.includes('?') && !isEmpty(condition.params)) {
+    // if a condition specifies a '?', check that there is an associated parameter
+    let numQuestionMarks = condition.expression.split('').filter(char => char === '?').length
+    if (numQuestionMarks > condition.params.length) {  
         return false
     }
+    // if there is a paramater for every question mark, check that each parameter is valid
     return condition.params.every((p) => 
         p !== undefined && p !== null
     )
 }
 
 // extension method for String
-String.prototype.repeatWithDelimeter = (count, delimeter) => 
-    arrayOf(count, (i) => this).join(delimeter)
-
+String.prototype.repeatWithDelimeter = function(count, delimeter) {
+    return arrayOf(count, (i) => this).join(delimeter)
+}
+    
 function arrayOf(size, indexTransform) {
     return Array.from(Array(size)).map((value, index) => indexTransform(index))
 }
