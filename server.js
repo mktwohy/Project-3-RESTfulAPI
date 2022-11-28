@@ -39,9 +39,22 @@ app.get('/codes', (req, res) => {
 
 // GET request handler for neighborhoods
 app.get('/neighborhoods', (req, res) => {
-    console.log(req.query); // query object (key-value pairs after the ? in the url)
+    let query = `SELECT * FROM Neighborhoods ORDER BY neighborhood_number`
+    let conditions = [
+        {
+            expression: "neighborhood_number = ?",
+            repeatWithOr: true,
+            params: parseInts(req.query.id)
+        }
+    ] 
     
-    res.status(200).type('json').send({}); // <-- you will need to change this
+    databaseSelectWhere(query, conditions)
+    .then((neighborhoods) => {
+        res.status(200).type('json').send(neighborhoods)
+    })
+    .catch((err) => {
+        res.status(404).type('text/plain').send(err)
+    });
 });
 
 // GET request handler for crime incidents
@@ -145,14 +158,16 @@ function databaseRun(query, params) {
  * @returns 
  */
  function databaseSelectWhere(query, conditions, limit=null) {
-    if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
+    if (query.includes('WHERE')) Error("WHERE clause should not be added manually in databaseSelectWhere()")
+    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually in databaseSelectWhere()")
 
     let expressions = filterAndFormatExpressions(conditions)
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (isNumber(limit)) {
-        editedQuery += ` LIMIT ${limit}`
+
+    if (!isNaN(limit) && limit !== null) {
+        editedQuery = insertLimitClause(editedQuery, limit)
     }
     if (!isEmpty(params)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
@@ -168,27 +183,32 @@ function databaseRun(query, params) {
  * @returns 
  */
 function databaseRunWhere(query, conditions) {
-    if (query.includes('WHERE')) Error("WHERE clause should not be added manually")
+    if (query.includes('WHERE')) Error("WHERE clause should not be added manually in databaseSelectWhere()")
+    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually in databaseSelectWhere()")
 
     let expressions = filterAndFormatExpressions(conditions)
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (isEmpty(editedQuery)) {
+    if (!isEmpty(editedQuery)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseRun(editedQuery, params)
 }
 
+function insertLimitClause(query, limit) {
+    return `${query} LIMIT ${limit}`
+}
+
 /**
  * Inserts a `WHERE` clause into query after the `FROM` clause and separates each condition with an `AND`
  * @param {string} query 
- * @param {string[]} conditions 
+ * @param {string[]} expressions 
  * @returns string
  */
- function insertWhereClause(query, conditions) {
+ function insertWhereClause(query, expressions) {
     let words = query.split(' ')
-    let whereClause = `WHERE ${conditions.join(' AND ')}`
+    let whereClause = `WHERE ${expressions.join(' AND ')}`
     let whereIndex = words.indexOf('FROM') + 2
     words.splice(whereIndex, 0, whereClause) // confusingly, this is how you insert items in JS
     return words.join(' ')
@@ -208,12 +228,10 @@ function filterAndFormatExpressions(conditions) {
         let expression = c.expression
     
         if (c.repeatWithAnd) {
-            expression = c.expression.repeatWithDelimeter(c.params.length, ' AND ')
-            expression = `(${expression})`
+            expression = `(${expression.repeatWithDelimeter(c.params.length, ' AND ')})`
         }
         if (c.repeatWithOr) {
-            expression = c.expression.repeatWithDelimeter(c.params.length, ' OR ')
-            expression = `(${expression})`
+            expression = `(${expression.repeatWithDelimeter(c.params.length, ' OR ')})`
         }
         expressions.push(expression)
     }
@@ -221,18 +239,22 @@ function filterAndFormatExpressions(conditions) {
 }
 
 function isConditionValid(condition) {
-    if (condition.expression.includes('?') && !isEmpty(condition.params)) {
+    // if a condition specifies a '?', check that there is an associated parameter
+    let numQuestionMarks = condition.expression.split('').filter(char => char === '?').length
+    if (numQuestionMarks > condition.params.length) {  
         return false
     }
+    // if there is a paramater for every question mark, check that each parameter is valid
     return condition.params.every((p) => 
         p !== undefined && p !== null
     )
 }
 
 // extension method for String
-String.prototype.repeatWithDelimeter = (count, delimeter) => 
-    arrayOf(count, (i) => this).join(delimeter)
-
+String.prototype.repeatWithDelimeter = function(count, delimeter) {
+    return arrayOf(count, (i) => this).join(delimeter)
+}
+    
 function arrayOf(size, indexTransform) {
     return Array.from(Array(size)).map((value, index) => indexTransform(index))
 }
@@ -243,11 +265,7 @@ function parseInts(param, delimeter=',') {
 }
 
 function isEmpty(list) {
-    return list !== undefined && list != null && list.length !== 0
-}
-
-function isNumber(number) {
-    return number instanceof Number && !isNaN(number)
+    return list === undefined || list === null || list.length === 0
 }
 
 // Start server - listen for client connections
