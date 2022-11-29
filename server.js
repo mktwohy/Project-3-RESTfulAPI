@@ -119,7 +119,7 @@ app.put('/new-incident', (req, res) => {
 app.delete('/remove-incident', (req, res) => {
     console.log('test');
     console.log(req.body); // uploaded data
-    if (caseExisits(parseInts(req.query.case_number))){
+    if (caseExisits(parseInt(req.query.case_number))){
         let query = `DELETE FROM Incidents`
         let conditions = [
             {
@@ -128,7 +128,9 @@ app.delete('/remove-incident', (req, res) => {
             }
         ]
         databaseRunWhere(query, conditions)
-        res.status(200).type('txt').send('OK'); 
+        .then(res.status(200).type('txt').send('OK'))
+        .catch(res.status(500).type('txt').send('Error deleting case number'))
+         
     } else{
         res.status(500).type('txt').send('Case number does not exist');
     }
