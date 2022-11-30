@@ -8,12 +8,12 @@
     },
     "contributors": [
         {
-            "name": "Mitchell Covey",
-            "email": "cove4462@stthomas.edu"
+            "name": "Timothy Larson",
+            "email": "lars7306@stthomas.edu"
         },
         {
-            "name": "",
-            "email": ""
+            "name": "Mitchell Covey",
+            "email": "cove4462@stthomas.edu"
         }
     ],
     "main": "server.js",

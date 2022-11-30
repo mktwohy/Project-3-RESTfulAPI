@@ -1,6 +1,7 @@
 // Built-in Node.js modules
 let fs = require('fs');
-let path = require('path');
+let path = require('path');let cors = require('cors');
+
 
 // NPM modules
 let express = require('express');
@@ -14,6 +15,8 @@ let db_filename = path.join(__dirname, 'db', 'stpaul_crime.sqlite3');
 
 let app = express();
 let port = 8000;
+
+app.use(cors())
 
 app.use(express.json());    // when we're uploading data, express will automatically parse JSON for us
 
@@ -31,8 +34,22 @@ let db = new sqlite3.Database(db_filename, sqlite3.OPEN_READWRITE, (err) => {
 // GET request handler for crime codes
 app.get('/codes', (req, res) => {
     console.log(req.query); // query object (key-value pairs after the ? in the url)
+    let query = 'SELECT * FROM Codes ORDER BY code'
+    let conditions = [
+        {
+            expression: "code = ?",
+            repeatWithOr: true,
+            params: parseInts(req.query.code)
+        }
+    ] 
     
-    res.status(200).type('json').send({}); // <-- you will need to change this
+    databaseSelectWhere(query, conditions)
+    .then((codes) => {
+        res.status(200).type('json').send(codes)
+    })
+    .catch((err) => {
+        res.status(404).type('text/plain').send(err)
+    });
 });
 
 // GET request handler for neighborhoods
@@ -103,9 +120,23 @@ app.put('/new-incident', (req, res) => {
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
+    console.log('test');
     console.log(req.body); // uploaded data
-    
-    res.status(200).type('txt').send('OK'); // <-- you may need to change this
+    if (caseExisits(parseInt(req.query.case_number))){
+        let query = `DELETE FROM Incidents`
+        let conditions = [
+            {
+                expression: "case_number = ?",
+                params: [parseInt(req.query.case_number)]
+            }
+        ]
+        databaseRunWhere(query, conditions)
+        .then(res.status(200).type('txt').send('OK'))
+        .catch(res.status(500).type('txt').send('Error deleting case number'))
+         
+    } else{
+        res.status(500).type('txt').send('Case number does not exist');
+    }
 });
 
 // Create Promise for SQLite3 database SELECT query 
@@ -264,6 +295,25 @@ function parseInts(param, delimeter=',') {
 
 function isEmpty(list) {
     return list === undefined || list === null || list.length === 0
+}
+
+function caseExisits(case_number){
+    let query = `SELECT * FROM Incidents `
+    let conditions = [
+        {
+            expression: "case_number = ?",
+            repeatWithOr: true,
+            params: case_number
+        }
+    ] 
+    
+    databaseSelectWhere(query, conditions)
+    .then((case_number) => {
+        return true
+    })
+    .catch((err) => {
+        return false
+    });
 }
 
 // Start server - listen for client connections
