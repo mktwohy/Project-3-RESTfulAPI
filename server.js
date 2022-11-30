@@ -206,7 +206,7 @@ function databaseRun(query, params) {
     if (!isNaN(limit) && limit !== null) {
         editedQuery = insertLimitClause(editedQuery, limit)
     }
-    if (!isEmpty(params)) {
+    if (!isEmptyOrNull(params)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseSelect(editedQuery, params)
@@ -227,7 +227,7 @@ function databaseRunWhere(query, conditions) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (!isEmpty(editedQuery)) {
+    if (!isEmptyOrNull(editedQuery)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseRun(editedQuery, params)
@@ -288,7 +288,7 @@ function isConditionValid(condition) {
         return false
     }
     // if a condition specifies a '?', check if params is null
-    if (numQuestionMarks > 0 && condition.params == null || condition.params == undefined) {
+    if (numQuestionMarks > 0 && isEmptyOrNull(condition.params)) {
         console.error("invalid condition; condition.params is null or undefined.")
         return false
     }
@@ -314,11 +314,11 @@ function arrayOf(size, indexTransform) {
 }
 
 function parseInts(param, delimeter=',') {
-    if (isEmpty(param)) return []
+    if (isEmptyOrNull(param)) return []
     return param.split(delimeter).map((c) => parseInt(c))
 }
 
-function isEmpty(list) {
+function isEmptyOrNull(list) {
     return list === undefined || list === null || list.length === 0
 }
 
