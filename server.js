@@ -113,28 +113,38 @@ app.get('/incidents', (req, res) => {
 
 // PUT request handler for new crime incident
 app.put('/new-incident', (req, res) => {
-    console.log(req.body); // uploaded data
-    
-    res.status(200).type('txt').send('OK'); // <-- you may need to change this
+    if (!caseExisits(req.case_number)) {
+        let query = `INSERT INTO incidents (case_number, date_time, code, incident,
+                    police_grid, neighborhood_number, block)
+                    VALUES (req.case_number, req.date_time, req.code, req.incident,
+                    req.police_grid, req.neighborhood_number, req.block)`
+        let conditions = []
+        databaseRunWhere(query, conditions)
+        .then(res.status(200).type('txt').send('OK'))
+        .catch(res.status(500).type('txt').send('Error deleting case number'))
+    } else {
+        res.status(500).type('txt').send('Case number already exists');
+    }
 });
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
-    console.log('test');
-    console.log(req.body); // uploaded data
-    if (caseExisits(parseInt(req.query.case_number))){
+    let caseNumber = parseInt(req.query.case_number)
+    console.log(`case number: ${caseNumber}`);
+    console.log(`case number pre-parse: ${req.query.case_number}`)
+    if (caseExisits(caseNumber)){
         let query = `DELETE FROM Incidents`
         let conditions = [
             {
                 expression: "case_number = ?",
-                params: [parseInt(req.query.case_number)]
+                params: [caseNumber]
             }
         ]
         databaseRunWhere(query, conditions)
         .then(res.status(200).type('txt').send('OK'))
         .catch(res.status(500).type('txt').send('Error deleting case number'))
          
-    } else{
+    } else {
         res.status(500).type('txt').send('Case number does not exist');
     }
 });
@@ -298,7 +308,7 @@ function isEmpty(list) {
 }
 
 function caseExisits(case_number){
-    let query = `SELECT * FROM Incidents `
+    let query = `SELECT * FROM Incidents`
     let conditions = [
         {
             expression: "case_number = ?",
