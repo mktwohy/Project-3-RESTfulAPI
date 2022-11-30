@@ -120,14 +120,13 @@ app.put('/new-incident', (req, res) => {
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
-    console.log('test');
-    console.log(req.body); // uploaded data
-    if (caseExisits(parseInt(req.query.case_number))){
+    let caseNumber = parseInt(req.body.case_number)
+    if (caseExisits(caseNumber)){
         let query = `DELETE FROM Incidents`
         let conditions = [
             {
                 expression: "case_number = ?",
-                params: [parseInt(req.query.case_number)]
+                params: [caseNumber]
             }
         ]
         databaseRunWhere(query, conditions)
@@ -135,7 +134,7 @@ app.delete('/remove-incident', (req, res) => {
         .catch(res.status(500).type('txt').send('Error deleting case number'))
          
     } else{
-        res.status(500).type('txt').send('Case number does not exist');
+        res.status(500).type('txt').send('Case number does not exist'); 
     }
 });
 
@@ -268,11 +267,28 @@ function filterAndFormatExpressions(conditions) {
 }
 
 function isConditionValid(condition) {
-    // if a condition specifies a '?', check that there is an associated parameter
     let numQuestionMarks = condition.expression.split('').filter(char => char === '?').length
-    if (numQuestionMarks > condition.params.length) {  
+
+    // if there are no question marks, then we don't need to check params
+    if (numQuestionMarks === 0) {
+        return true
+    }
+    // ensure that params is an array
+    if (!(condition.params instanceof Array)) {
+        console.error(`invalid condition; condition.params should be an Array, but is actually ${typeof condition.params}`)
         return false
     }
+    // if a condition specifies a '?', check if params is null
+    if (numQuestionMarks > 0 && condition.params == null || condition.params == undefined) {
+        console.error("invalid condition; condition.params is null or undefined.")
+        return false
+    }
+    // if a condition specifies a '?', check that there is an associated parameter for every question mark
+    if (numQuestionMarks > condition.params.length) {  
+        console.error("invalid condition; condition.expression contains more question marks than there are condition.params")
+        return false
+    }
+
     // if there is a paramater for every question mark, check that each parameter is valid
     return condition.params.every((p) => 
         p !== undefined && p !== null
@@ -302,8 +318,7 @@ function caseExisits(case_number){
     let conditions = [
         {
             expression: "case_number = ?",
-            repeatWithOr: true,
-            params: case_number
+            params: [case_number]
         }
     ] 
     
