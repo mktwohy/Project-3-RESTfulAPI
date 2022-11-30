@@ -1,6 +1,7 @@
 // Built-in Node.js modules
 let fs = require('fs');
-let path = require('path');
+let path = require('path');let cors = require('cors');
+
 
 // NPM modules
 let express = require('express');
@@ -14,6 +15,8 @@ let db_filename = path.join(__dirname, 'db', 'stpaul_crime.sqlite3');
 
 let app = express();
 let port = 8000;
+
+app.use(cors())
 
 app.use(express.json());    // when we're uploading data, express will automatically parse JSON for us
 
