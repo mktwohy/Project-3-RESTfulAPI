@@ -1,6 +1,7 @@
 // Built-in Node.js modules
 let fs = require('fs');
-let path = require('path');let cors = require('cors');
+let path = require('path');
+let cors = require('cors');
 
 
 // NPM modules
@@ -16,7 +17,7 @@ let db_filename = path.join(__dirname, 'db', 'stpaul_crime.sqlite3');
 let app = express();
 let port = 8000;
 
-app.use(cors())
+app.use(cors());
 
 app.use(express.json());    // when we're uploading data, express will automatically parse JSON for us
 
@@ -122,21 +123,21 @@ app.put('/new-incident', (req, res) => {
 app.delete('/remove-incident', (req, res) => {
     console.log('test');
     console.log(req.body); // uploaded data
-    if (caseExisits(parseInt(req.query.case_number))){
+   // if (caseExists(parseInt(req.body.case_number))){
         let query = `DELETE FROM Incidents`
         let conditions = [
             {
                 expression: "case_number = ?",
-                params: [parseInt(req.query.case_number)]
+                params: [parseInt(req.body.case_number)]
             }
         ]
         databaseRunWhere(query, conditions)
         .then(res.status(200).type('txt').send('OK'))
         .catch(res.status(500).type('txt').send('Error deleting case number'))
          
-    } else{
-        res.status(500).type('txt').send('Case number does not exist');
-    }
+    //} else{
+     //   res.status(500).type('txt').send('Case number does not exist');
+    //}
 });
 
 // Create Promise for SQLite3 database SELECT query 
@@ -273,6 +274,7 @@ function isConditionValid(condition) {
     if (numQuestionMarks > condition.params.length) {  
         return false
     }
+    console.log(condition.params);
     // if there is a paramater for every question mark, check that each parameter is valid
     return condition.params.every((p) => 
         p !== undefined && p !== null
@@ -297,13 +299,13 @@ function isEmpty(list) {
     return list === undefined || list === null || list.length === 0
 }
 
-function caseExisits(case_number){
+function caseExists(case_number){
     let query = `SELECT * FROM Incidents `
     let conditions = [
         {
             expression: "case_number = ?",
             repeatWithOr: true,
-            params: case_number
+            params: [case_number]
         }
     ] 
     
