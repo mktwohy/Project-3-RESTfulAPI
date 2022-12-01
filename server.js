@@ -18,7 +18,6 @@ let app = express();
 let port = 8000;
 
 app.use(cors());
-
 app.use(express.json());    // when we're uploading data, express will automatically parse JSON for us
 
 // Open SQLite3 database (in read-write mode)
@@ -152,12 +151,8 @@ app.delete('/remove-incident', (req, res) => {
 
 // Create Promise for SQLite3 database SELECT query 
 function databaseSelect(query, params) {
-    console.log(
-        `SELECT:
-            query: ${query}
-            params: ${params}
-        `
-    )
+    console.log(`SELECT: \n\tquery: ${query} \n\tparams: ${params}`)
+
     return new Promise((resolve, reject) => {
         db.all(query, params, (err, rows) => {
             if (err) {
@@ -172,12 +167,8 @@ function databaseSelect(query, params) {
 
 // Create Promise for SQLite3 database INSERT or DELETE query
 function databaseRun(query, params) {
-    console.log(
-        `RUN:
-            query: ${query}
-            params: ${params}
-        `
-    )
+    console.log(`RUN: \n\tquery: ${query} \n\tparams: ${params}`)
+
     return new Promise((resolve, reject) => {
         db.run(query, params, (err) => {
             if (err) {
@@ -191,7 +182,10 @@ function databaseRun(query, params) {
 }
 
 /**
- * Create Promise for SQLite3 database `SELECT` query after inserting a `WHERE` and `LIMIT` clause, if necessary
+ * Create Promise for SQLite3 database `SELECT` query after inserting a `WHERE` and `LIMIT` clause, if necessary.
+ * 
+ * `databaseSelectWhere()` will insert all valid conditions into the SQL query; that is, conditions will be included in the `WHERE` clause 
+ * only if every question mark in `expression` has an associated parameter in `params`, and if each of these parameters are not null/undefined
  * 
  * @param {string} query a SQL query that does not contain a `WHERE` clause
  * @param {{ expression: string, params: any[], repeatWithOr: boolean, repeatWithAnd: boolean }[]} conditions 
