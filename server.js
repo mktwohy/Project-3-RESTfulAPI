@@ -205,7 +205,6 @@ function databaseRun(query, params) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-
     if (!isNaN(limit) && limit !== null) {
         editedQuery = insertLimitClause(editedQuery, limit)
     }
@@ -213,27 +212,6 @@ function databaseRun(query, params) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseSelect(editedQuery, params)
-}
-
-/**
- * Create Promise for SQLite3 database `INSERT` or `DELETE` query after inserting a `WHERE` clause
- * 
- * @param {string} query a SQL query that does not contain a `WHERE` clause
- * @param {{ expression: string, params: any[], repeatWithOr: boolean, repeatWithAnd: boolean }[]} conditions 
- * @returns 
- */
-function databaseRunWhere(query, conditions) {
-    if (query.includes('WHERE')) Error("WHERE clause should not be added manually in databaseSelectWhere()")
-    if (query.includes('LIMIT')) Error("LIMIT clause should not be added manually in databaseSelectWhere()")
-
-    let expressions = filterAndFormatExpressions(conditions)
-    let params = filterParameters(conditions)
-    let editedQuery = query
-
-    if (!isEmptyOrNull(editedQuery)) {
-        editedQuery = insertWhereClause(editedQuery, expressions)
-    }
-    return databaseRun(editedQuery, params)
 }
 
 function insertLimitClause(query, limit) {
@@ -322,24 +300,6 @@ function parseInts(param, delimeter=',') {
 
 function isEmptyOrNull(list) {
     return list === undefined || list === null || list.length === 0
-}
-
-function caseExists(case_number){
-    let query = `SELECT * FROM Incidents`
-    let conditions = [
-        {
-            expression: "case_number = ?",
-            params: [case_number]
-        }
-    ] 
-    
-    databaseSelectWhere(query, conditions)
-    .then((case_number) => {
-        return true
-    })
-    .catch((err) => {
-        return false
-    });
 }
 
 // Start server - listen for client connections
