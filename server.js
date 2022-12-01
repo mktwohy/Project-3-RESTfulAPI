@@ -114,30 +114,34 @@ app.get('/incidents', (req, res) => {
 
 // PUT request handler for new crime incident
 app.put('/new-incident', (req, res) => {
-    console.log(req.body); // uploaded data
-    
-    res.status(200).type('txt').send('OK'); // <-- you may need to change this
+    let query = `INSERT INTO incidents VALUES (?, ?, ?, ?, ?, ?, ?)`
+    let params = [req.body.case_number, req.body.date + 'T' + req.body.time, req.body.code, req.body.incident, 
+                    req.body.police_grid, req.body.neighborhood_number, req.body.block]
+    databaseRun(query, params)
+    .then(() => {
+        res.status(200).type('txt').send('OK')
+    })
+    .catch(() => {
+        res.status(500).type('txt').send('Error: Incident already exists')
+    })
 });
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
-    console.log('test');
-    console.log(req.body); // uploaded data
-   // if (caseExists(parseInt(req.body.case_number))){
-        let query = `DELETE FROM Incidents`
-        let conditions = [
-            {
-                expression: "case_number = ?",
-                params: [parseInt(req.body.case_number)]
-            }
-        ]
-        databaseRunWhere(query, conditions)
-        .then(res.status(200).type('txt').send('OK'))
-        .catch(res.status(500).type('txt').send('Error deleting case number'))
-         
-    //} else{
-     //   res.status(500).type('txt').send('Case number does not exist');
-    //}
+    let query = `DELETE FROM Incidents`
+    let conditions = [
+        { 
+            expression: 'case_number = ?', 
+            params: parseInts(req.body.case_number) 
+        }
+    ]
+    databaseRunWhere(query, conditions)
+    .then(() => {
+        res.status(200).type('txt').send('OK')
+    })
+    .catch(() => {
+        res.status(500).type('txt').send('Error deleting incident')
+    })
 });
 
 // Create Promise for SQLite3 database SELECT query 
@@ -199,7 +203,7 @@ function databaseRun(query, params) {
     if (!isNaN(limit) && limit !== null) {
         editedQuery = insertLimitClause(editedQuery, limit)
     }
-    if (!isEmpty(params)) {
+    if (!isEmptyOrNull(params)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseSelect(editedQuery, params)
@@ -220,7 +224,7 @@ function databaseRunWhere(query, conditions) {
     let params = filterParameters(conditions)
     let editedQuery = query
 
-    if (!isEmpty(editedQuery)) {
+    if (!isEmptyOrNull(editedQuery)) {
         editedQuery = insertWhereClause(editedQuery, expressions)
     }
     return databaseRun(editedQuery, params)
@@ -269,12 +273,27 @@ function filterAndFormatExpressions(conditions) {
 }
 
 function isConditionValid(condition) {
-    // if a condition specifies a '?', check that there is an associated parameter
     let numQuestionMarks = condition.expression.split('').filter(char => char === '?').length
-    if (numQuestionMarks > condition.params.length) {  
+
+    // if there are no question marks, then we don't need to check params
+    if (numQuestionMarks === 0) {
+        return true
+    }
+    // ensure that params is an array
+    if (!(condition.params instanceof Array)) {
+        console.error(`invalid condition; condition.params should be an Array, but is actually ${typeof condition.params}`)
         return false
     }
-    console.log(condition.params);
+    // if a condition specifies a '?', check if params is null
+    if (numQuestionMarks > 0 && isEmptyOrNull(condition.params)) {
+        console.error("invalid condition; condition.params is null or undefined.")
+        return false
+    }
+    // if a condition specifies a '?', check that there is an associated parameter for every question mark
+    if (numQuestionMarks > condition.params.length) {  
+        console.error("invalid condition; condition.expression contains more question marks than there are condition.params")
+        return false
+    }
     // if there is a paramater for every question mark, check that each parameter is valid
     return condition.params.every((p) => 
         p !== undefined && p !== null
@@ -291,20 +310,19 @@ function arrayOf(size, indexTransform) {
 }
 
 function parseInts(param, delimeter=',') {
-    if (isEmpty(param)) return []
+    if (isEmptyOrNull(param)) return []
     return param.split(delimeter).map((c) => parseInt(c))
 }
 
-function isEmpty(list) {
+function isEmptyOrNull(list) {
     return list === undefined || list === null || list.length === 0
 }
 
 function caseExists(case_number){
-    let query = `SELECT * FROM Incidents `
+    let query = `SELECT * FROM Incidents`
     let conditions = [
         {
             expression: "case_number = ?",
-            repeatWithOr: true,
             params: [case_number]
         }
     ] 
