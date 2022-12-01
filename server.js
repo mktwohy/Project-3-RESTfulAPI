@@ -128,20 +128,6 @@ app.put('/new-incident', (req, res) => {
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
-    /*let query = `DELETE FROM Incidents WHERE `
-    let conditions = [
-        { 
-            expression: 'case_number = ?', 
-            params: parseInts(req.body.case_number) 
-        }
-    ]
-    databaseRun(query, conditions)
-    .then(() => {
-        res.status(200).type('txt').send('OK')
-    })
-    .catch(() => {
-        res.status(500).type('txt').send('Error deleting incident')
-    })*/
     let case_number = parseInt(req.body.case_number);
     let query = `SELECT * FROM Incidents WHERE case_number = ?`
     let params = [case_number]  
