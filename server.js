@@ -113,38 +113,34 @@ app.get('/incidents', (req, res) => {
 
 // PUT request handler for new crime incident
 app.put('/new-incident', (req, res) => {
-    if (!caseExisits(req.case_number)) {
-        let query = `INSERT INTO incidents (case_number, date_time, code, incident,
-                    police_grid, neighborhood_number, block)
-                    VALUES (req.case_number, req.date_time, req.code, req.incident,
-                    req.police_grid, req.neighborhood_number, req.block)`
-        let conditions = []
-        databaseRunWhere(query, conditions)
-        .then(res.status(200).type('txt').send('OK'))
-        .catch(res.status(500).type('txt').send('Error deleting case number'))
-    } else {
-        res.status(500).type('txt').send('Case number already exists');
-    }
+    let query = `INSERT INTO incidents VALUES (?, ?, ?, ?, ?, ?, ?)`
+    let conditions = [req.body.case_number, req.body.date + 'T' + req.body.time, req.body.code, req.body.incident, 
+                    req.body.police_grid, req.body.neighborhood_number, req.body.block]
+    databaseRun(query, conditions)
+    .then(() => {
+        res.status(200).type('txt').send('OK')
+    })
+    .catch(() => {
+        res.status(500).type('txt').send('Error: Incident already exists')
+    })
 });
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
-    let caseNumber = parseInt(req.body.case_number)
-    if (caseExisits(caseNumber)){
-        let query = `DELETE FROM Incidents`
-        let conditions = [
-            {
-                expression: "case_number = ?",
-                params: [caseNumber]
-            }
-        ]
-        databaseRunWhere(query, conditions)
-        .then(res.status(200).type('txt').send('OK'))
-        .catch(res.status(500).type('txt').send('Error deleting case number'))
-         
-    } else {
-        res.status(500).type('txt').send('Case number does not exist');
-    }
+    let query = `DELETE FROM Incidents`
+    let conditions = [
+        { 
+            expression: 'case_number = ?', 
+            params: parseInts(req.body.case_number) 
+        }
+    ]
+    databaseRunWhere(query, conditions)
+    .then(() => {
+        res.status(200).type('txt').send('OK')
+    })
+    .catch(() => {
+        res.status(500).type('txt').send('Error deleting incident')
+    })
 });
 
 // Create Promise for SQLite3 database SELECT query 
@@ -322,7 +318,7 @@ function isEmptyOrNull(list) {
     return list === undefined || list === null || list.length === 0
 }
 
-function caseExisits(case_number){
+function caseExists(case_number){
     let query = `SELECT * FROM Incidents`
     let conditions = [
         {
