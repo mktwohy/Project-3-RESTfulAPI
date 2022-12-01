@@ -128,20 +128,26 @@ app.put('/new-incident', (req, res) => {
 
 // DELETE request handler for new crime incident
 app.delete('/remove-incident', (req, res) => {
-    let query = `DELETE FROM Incidents`
-    let conditions = [
-        { 
-            expression: 'case_number = ?', 
-            params: parseInts(req.body.case_number) 
+    let case_number = parseInt(req.body.case_number);
+    let query = `SELECT * FROM Incidents WHERE case_number = ?`
+    let params = [case_number]  
+    
+    databaseSelect(query, params)
+    .then((incidents) => {
+        //delete
+        if(isEmptyOrNull(incidents)){
+            reject('Case number does not exist')
+        } else{
+            let deleteQuery = `DELETE FROM Incidents WHERE case_number = ?`
+            return databaseRun(deleteQuery, params)
         }
-    ]
-    databaseRunWhere(query, conditions)
+    })
     .then(() => {
         res.status(200).type('txt').send('OK')
     })
-    .catch(() => {
+    .catch((err) => {
         res.status(500).type('txt').send('Error deleting incident')
-    })
+    });
 });
 
 // Create Promise for SQLite3 database SELECT query 
