@@ -114,9 +114,9 @@ app.get('/incidents', (req, res) => {
 // PUT request handler for new crime incident
 app.put('/new-incident', (req, res) => {
     let query = `INSERT INTO incidents VALUES (?, ?, ?, ?, ?, ?, ?)`
-    let conditions = [req.body.case_number, req.body.date + 'T' + req.body.time, req.body.code, req.body.incident, 
+    let params = [req.body.case_number, req.body.date + 'T' + req.body.time, req.body.code, req.body.incident, 
                     req.body.police_grid, req.body.neighborhood_number, req.body.block]
-    databaseRun(query, conditions)
+    databaseRun(query, params)
     .then(() => {
         res.status(200).type('txt').send('OK')
     })
