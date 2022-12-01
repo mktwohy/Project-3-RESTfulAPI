@@ -151,7 +151,7 @@ app.delete('/remove-incident', (req, res) => {
 
 // Create Promise for SQLite3 database SELECT query 
 function databaseSelect(query, params) {
-    console.log(`SELECT: \n\tquery: ${query} \n\tparams: ${params}`)
+    console.log(`\nSELECT: \n\tquery: ${query} \n\tparams: ${params}\n`)
 
     return new Promise((resolve, reject) => {
         db.all(query, params, (err, rows) => {
@@ -167,7 +167,7 @@ function databaseSelect(query, params) {
 
 // Create Promise for SQLite3 database INSERT or DELETE query
 function databaseRun(query, params) {
-    console.log(`RUN: \n\tquery: ${query} \n\tparams: ${params}`)
+    console.log(`\nRUN: \n\tquery: ${query} \n\tparams: ${params}\n`)
 
     return new Promise((resolve, reject) => {
         db.run(query, params, (err) => {
@@ -251,6 +251,10 @@ function filterAndFormatExpressions(conditions) {
 }
 
 function isConditionValid(condition) {
+    function logInvalidCondition(reason) {
+        console.error(`invalid condition '${condition.expression}'; ${reason}`)
+    }
+
     let numQuestionMarks = condition.expression.split('').filter(char => char === '?').length
 
     // if there are no question marks, then we don't need to check params
@@ -259,17 +263,17 @@ function isConditionValid(condition) {
     }
     // ensure that params is an array
     if (!(condition.params instanceof Array)) {
-        console.error(`invalid condition; condition.params should be an Array, but is actually ${typeof condition.params}`)
+        logInvalidCondition(`condition.params should be an Array, but is actually ${typeof condition.params}`)
         return false
     }
     // if a condition specifies a '?', check if params is null
     if (numQuestionMarks > 0 && isEmptyOrNull(condition.params)) {
-        console.error("invalid condition; condition.params is null or undefined.")
+        logInvalidCondition("condition.params is null or undefined.")
         return false
     }
     // if a condition specifies a '?', check that there is an associated parameter for every question mark
     if (numQuestionMarks > condition.params.length) {  
-        console.error("invalid condition; condition.expression contains more question marks than there are condition.params")
+        logInvalidCondition("condition.expression contains more question marks than there are condition.params")
         return false
     }
     // if there is a paramater for every question mark, check that each parameter is valid
