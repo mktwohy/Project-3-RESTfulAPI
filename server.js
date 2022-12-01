@@ -1,6 +1,7 @@
 // Built-in Node.js modules
 let fs = require('fs');
-let path = require('path');let cors = require('cors');
+let path = require('path');
+let cors = require('cors');
 
 
 // NPM modules
@@ -16,7 +17,7 @@ let db_filename = path.join(__dirname, 'db', 'stpaul_crime.sqlite3');
 let app = express();
 let port = 8000;
 
-app.use(cors())
+app.use(cors());
 
 app.use(express.json());    // when we're uploading data, express will automatically parse JSON for us
 
@@ -293,7 +294,6 @@ function isConditionValid(condition) {
         console.error("invalid condition; condition.expression contains more question marks than there are condition.params")
         return false
     }
-
     // if there is a paramater for every question mark, check that each parameter is valid
     return condition.params.every((p) => 
         p !== undefined && p !== null
